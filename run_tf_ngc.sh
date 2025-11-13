@@ -11,7 +11,7 @@
 # Auto-instala requirements.txt dentro del contenedor.
 ###############################################################################
 
-IMAGE="nvcr.io/nvidia/tensorflow:25.02-tf2-py3-igpu"
+IMAGE="nvcr.io/nvidia/tensorflow:25.02-tf2-py3"
 
 # Carpeta local del proyecto = carpeta donde está este script
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
