@@ -150,11 +150,14 @@ def train_stacked(stock_file, model_type, seq_length, epochs, batch_size,
     # 8. Visualizar resultados
     print("\nGenerando visualizaciones...")
     
+    images_dir = os.path.join(output_dir, 'images')
+    os.makedirs(images_dir, exist_ok=True)
+    
     # Historial de entrenamiento
     plot_training_history(
         history, 
         model_name=model_name,
-        save_path=os.path.join(output_dir, f"{model_name}_history.png")
+        save_path=os.path.join(images_dir, f"{model_name}_history.png")
     )
     
     # Predicciones
@@ -167,7 +170,7 @@ def train_stacked(stock_file, model_type, seq_length, epochs, batch_size,
         y_pred_original,
         model_name=model_name,
         n_points=200,
-        save_path=os.path.join(output_dir, f"{model_name}_predictions.png")
+        save_path=os.path.join(images_dir, f"{model_name}_predictions.png")
     )
     
     # Residuos
@@ -175,7 +178,7 @@ def train_stacked(stock_file, model_type, seq_length, epochs, batch_size,
         y_test_original,
         y_pred_original,
         model_name=model_name,
-        save_path=os.path.join(output_dir, f"{model_name}_residuals.png")
+        save_path=os.path.join(images_dir, f"{model_name}_residuals.png")
     )
     
     print("\n" + "="*70)

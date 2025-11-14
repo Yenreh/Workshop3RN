@@ -5,6 +5,7 @@ Funciones auxiliares para entrenamiento y evaluación de modelos.
 
 import numpy as np
 import os
+import pandas as pd
 from tensorflow import keras
 
 
@@ -20,9 +21,10 @@ def create_callbacks(model_name, output_dir='output', patience=10):
     Returns:
         list: Lista de callbacks
     """
-    os.makedirs(output_dir, exist_ok=True)
+    models_dir = os.path.join(output_dir, 'models')
+    os.makedirs(models_dir, exist_ok=True)
     
-    model_path = os.path.join(output_dir, f"{model_name}_best.keras")
+    model_path = os.path.join(models_dir, f"{model_name}_best.keras")
     
     checkpoint = keras.callbacks.ModelCheckpoint(
         model_path,
@@ -97,7 +99,7 @@ def evaluate_model(model, X_test, y_test, normalizer=None):
 
 def save_model_info(model, config, metrics, model_name, output_dir='output'):
     """
-    Guarda información del modelo (solo resumen en archivo de texto).
+    Guarda información del modelo en formato CSV.
     
     Args:
         model: Modelo entrenado
@@ -108,26 +110,22 @@ def save_model_info(model, config, metrics, model_name, output_dir='output'):
     """
     os.makedirs(output_dir, exist_ok=True)
     
-    info_path = os.path.join(output_dir, f"{model_name}_info.txt")
-    with open(info_path, 'w') as f:
-        f.write(f"Modelo: {model_name}\n")
-        f.write("=" * 60 + "\n\n")
-        
-        f.write("Configuración:\n")
-        for key, value in config.items():
-            f.write(f"  {key}: {value}\n")
-        
-        f.write("\nMétricas:\n")
-        for key, value in metrics.items():
-            if isinstance(value, float):
-                f.write(f"  {key}: {value:.4f}\n")
-            else:
-                f.write(f"  {key}: {value}\n")
-        
-        f.write("\nArquitectura del modelo:\n")
-        model.summary(print_fn=lambda x: f.write(x + '\n'))
+    csv_path = os.path.join(output_dir, 'results.csv')
     
-    print(f"Información guardada en: {info_path}")
+    data = {
+        'model_name': model_name,
+        **config,
+        **metrics
+    }
+    
+    df = pd.DataFrame([data])
+    
+    if os.path.exists(csv_path):
+        df_existing = pd.read_csv(csv_path)
+        df = pd.concat([df_existing, df], ignore_index=True)
+    
+    df.to_csv(csv_path, index=False)
+    print(f"Resultados guardados en: {csv_path}")
 
 
 def compare_models(results_list):
