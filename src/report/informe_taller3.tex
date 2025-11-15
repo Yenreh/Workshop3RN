@@ -158,6 +158,12 @@ Prueba & 15\% & Evaluación final del desempeño \\
 
 A diferencia de problemas de clasificación donde se puede usar división aleatoria, en series temporales es crítico preservar el orden cronológico para evitar data leakage y simular predicción realista hacia el futuro.
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{../output/images/data_division.png}
+\caption{División temporal de datos para entrenamiento, validación y prueba}
+\end{figure}
+
 \subsubsection{Normalización}
 Se aplicó normalización Min-Max a la escala [0, 1]:
 \begin{equation}
