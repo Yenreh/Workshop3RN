@@ -75,7 +75,7 @@
 
 \section{Introducción}
 
-El presente informe documenta el desarrollo completo del Taller No. 3 de la asignatura Redes Neuronales, correspondiente al período académico 2025-II. El objetivo principal de este taller es implementar y evaluar redes neuronales recurrentes con memoria (LSTM y GRU) para la predicción de series temporales financieras, específicamente precios de acciones del mercado bursátil.
+El presente informe documenta el desarrollo completo del Taller No. 3 de la asignatura Redes Neuronales, correspondiente al período académico 2025-II. El objetivo principal de este taller es implementar y evaluar redes neuronales recurrentes con memoria (LSTM y GRU) para la predicción de series temporales financieras, específicamente precios de acciones del mercado.
 
 \subsection{Objetivos}
 
@@ -156,7 +156,7 @@ Prueba & 15\% & Evaluación final del desempeño \\
 \caption{División temporal de datos (preservando orden cronológico)}
 \end{table}
 
-\textbf{Justificación:} A diferencia de problemas de clasificación donde se puede usar división aleatoria, en series temporales es crítico preservar el orden cronológico para evitar data leakage y simular predicción realista hacia el futuro.
+A diferencia de problemas de clasificación donde se puede usar división aleatoria, en series temporales es crítico preservar el orden cronológico para evitar data leakage y simular predicción realista hacia el futuro.
 
 \subsubsection{Normalización}
 Se aplicó normalización Min-Max a la escala [0, 1]:
@@ -171,7 +171,7 @@ x_{\text{norm}} = \frac{x - x_{\min}}{x_{\max} - x_{\min}}
     \item Estabiliza magnitudes numéricas en backpropagation
 \end{itemize}
 
-\textbf{Importante:} La normalización se ajustó únicamente con datos de entrenamiento y se aplicó consistentemente a validación y prueba para evitar data leakage.
+La normalización se ajustó únicamente con datos de entrenamiento y se aplicó consistentemente a validación y prueba para evitar data leakage.
 
 \subsubsection{Creación de Secuencias}
 Para predicción de 1 paso adelante (next-day prediction), se construyeron ventanas deslizantes:
@@ -466,7 +466,6 @@ stacked\_gru\_3\_layers & 0.0470 & 0.1314 & 0.2167 & 0.9968 & 2.89 \\
 
 \subsubsection{Análisis de Modelos Apilados}
 
-\textbf{Hallazgos críticos:}
 
 \begin{enumerate}
     \item \textbf{LSTM apilado falla dramáticamente:} El modelo de 2 capas obtiene MAPE 4.11\% (99\% peor que LSTM simple) y el de 3 capas colapsa a MAPE 6.57\% (217\% peor). Esto indica overfitting severo o problemas de optimización.
@@ -618,21 +617,52 @@ Las visualizaciones generadas durante los experimentos confirman los hallazgos c
 
 \textbf{Limitaciones:} Evaluación en acción única (AMD), predicción 1-día, solo precio histórico, sin factores de mercado externos.
 
-\textbf{Mejoras propuestas:} Incluir features adicionales (volumen, RSI, MACD), evaluar múltiples acciones, predicción multi-paso, implementar attention mechanism, validación con walk-forward.
 
 \section{Referencias}
 
 \begin{thebibliography}{9}
 
-\bibitem{hochreiter1997}
-Hochreiter, S., \& Schmidhuber, J. (1997).
-Long short-term memory.
-\textit{Neural Computation}, 9(8), 1735--1780.
+\bibitem{chollet2021}
+Chollet, F. (2021).
+\textit{Deep Learning with Python, Second Edition}.
+Manning Publications. \\
+\url{https://www.manning.com/books/deep-learning-with-python-second-edition}
 
-\bibitem{cho2014}
-Cho, K., Van Merriënboer, B., Gulcehre, C., Bahdanau, D., Bougares, F., Schwenk, H., \& Bengio, Y. (2014).
-Learning phrase representations using RNN encoder-decoder for statistical machine translation.
-\textit{arXiv preprint arXiv:1406.1078}.
+\bibitem{taller3_enunciado}
+Chaves, D. (2025).
+Taller No. 3: Predicción promedio del valor de acciones del mercado con redes LSTM y GRU.
+\textit{Universidad del Valle - Redes Neuronales}. \\
+Material del curso
+
+\bibitem{diapositivas_bptt}
+Chaves, D. (2025).
+Diapositivas: Backpropagation en RNN.
+\textit{Universidad del Valle - Redes Neuronales}. \\
+Material del curso
+
+\bibitem{diapositivas_estrategias}
+Chaves, D. (2025).
+Diapositivas: Estrategias de implementación RNN.
+\textit{Universidad del Valle - Redes Neuronales}. \\
+Material del curso
+
+\bibitem{diapositivas_lstm}
+Chaves, D. (2025).
+Diapositivas: Long Short-Term Memory (LSTM) Network.
+\textit{Universidad del Valle - Redes Neuronales}. \\
+Material del curso
+
+\bibitem{ejemplo_lstm}
+Chaves, D. (2025).
+Ejemplo LSTM (no calificable).
+\textit{Universidad del Valle - Redes Neuronales}. \\
+Material del curso
+
+\bibitem{diapositivas_gru}
+Chaves, D. (2025).
+Diapositivas: Gated Recurrent Unit (GRU) Network.
+\textit{Universidad del Valle - Redes Neuronales}. \\
+Material del curso
 
 \bibitem{kaggle_dataset}
 Marjanovic, B.
@@ -640,15 +670,20 @@ Huge Stock Market Dataset.
 \textit{Kaggle}. \\
 \url{https://www.kaggle.com/datasets/borismarjanovic/price-volume-data-for-all-us-stocks-etfs}
 
-\bibitem{tensorflow}
-Abadi, M., et al. (2016).
-TensorFlow: A system for large-scale machine learning.
-\textit{12th USENIX Symposium on Operating Systems Design and Implementation (OSDI 16)}, 265--283.
+\bibitem{tensorflow_docs}
+TensorFlow Documentation (2025).
+Recurrent Neural Networks (RNN) with Keras.
+\url{https://www.tensorflow.org/guide/keras/rnn}
 
-\bibitem{chollet2015}
-Chollet, F., et al. (2015).
-Keras.
-\url{https://keras.io}
+\bibitem{keras_lstm}
+Keras Documentation (2025).
+LSTM layer.
+\url{https://keras.io/api/layers/recurrent_layers/lstm/}
+
+\bibitem{keras_gru}
+Keras Documentation (2025).
+GRU layer.
+\url{https://keras.io/api/layers/recurrent_layers/gru/}
 
 \end{thebibliography}
 
