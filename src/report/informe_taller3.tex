@@ -1,0 +1,655 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{float}
+
+\geometry{margin=2.5cm}
+
+% Configurar altura del encabezado
+\setlength{\headheight}{15pt}
+
+% Configuración para código Python
+\lstdefinestyle{pythonstyle}{
+    language=Python,
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\color{blue}\bfseries,
+    commentstyle=\color{green!60!black},
+    stringstyle=\color{red},
+    backgroundcolor=\color{gray!5},
+    frame=single,
+    breaklines=true,
+    captionpos=b,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    showstringspaces=false
+}
+
+\lstset{style=pythonstyle}
+
+% Configuración del encabezado
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Taller No. 3 - Redes Neuronales}
+\fancyhead[R]{\thepage}
+\fancyfoot[C]{Universidad del Valle - Redes Neuronales 2025-II}
+
+\title{
+    \textbf{Taller No. 3 - Redes Neuronales} \\
+    \large{Predicción de Series Temporales con} \\
+    \large{Redes LSTM y GRU}
+}
+
+\author{
+    \textbf{Herney Eduardo Quintero Trochez} \\
+    \textit{201528556} \\
+    Universidad del Valle \\
+    Facultad de Ingeniería \\
+    Programa de Ingeniería de Sistemas
+}
+
+\date{Noviembre 2025}
+
+\begin{document}
+
+\maketitle
+
+\newpage
+
+% \tableofcontents
+
+% \newpage
+
+\section{Introducción}
+
+El presente informe documenta el desarrollo completo del Taller No. 3 de la asignatura Redes Neuronales, correspondiente al período académico 2025-II. El objetivo principal de este taller es implementar y evaluar redes neuronales recurrentes con memoria (LSTM y GRU) para la predicción de series temporales financieras, específicamente precios de acciones del mercado bursátil.
+
+\subsection{Objetivos}
+
+\subsubsection{Objetivo General}
+Implementar y comparar modelos de redes neuronales recurrentes LSTM y GRU para la predicción del precio promedio de acciones, evaluando el impacto de diferentes hiperparámetros y arquitecturas apiladas.
+
+\subsubsection{Objetivos Específicos}
+\begin{itemize}
+    \item Implementar modelos LSTM con diferentes configuraciones de hiperparámetros
+    \item Implementar modelos GRU con configuraciones equivalentes para comparación directa
+    \item Evaluar arquitecturas apiladas (stacked) con múltiples capas recurrentes
+    \item Analizar el efecto de la longitud de secuencia (seq\_length) en el desempeño
+    \item Evaluar el impacto del tamaño de batch en la convergencia y calidad predictiva
+    \item Estudiar el efecto del recurrent\_dropout en la regularización del modelo
+    \item Comparar el desempeño entre LSTM y GRU bajo las mismas condiciones
+    \item Determinar la configuración óptima para predicción de series temporales financieras
+\end{itemize}
+
+\section{Marco Teórico}
+
+\subsection{Redes LSTM y GRU}
+
+Las redes LSTM (Hochreiter \& Schmidhuber, 1997) resuelven el problema de vanishing gradients mediante puertas que controlan el flujo de información. Las redes GRU (Cho et al., 2014) simplifican LSTM usando menos puertas, siendo más eficientes computacionalmente con desempeño similar.
+
+\subsection{Métricas de Evaluación}
+
+\begin{itemize}
+    \item \textbf{MSE:} $\frac{1}{n}\sum_{i=1}^{n}(y_i - \hat{y}_i)^2$ \quad \textbf{MAE:} $\frac{1}{n}\sum_{i=1}^{n}|y_i - \hat{y}_i|$ \quad \textbf{RMSE:} $\sqrt{\text{MSE}}$
+    \item \textbf{R²:} $1 - \frac{\sum(y_i - \hat{y}_i)^2}{\sum(y_i - \bar{y})^2}$ \quad \textbf{MAPE:} $\frac{100\%}{n}\sum_{i=1}^{n}\left|\frac{y_i - \hat{y}_i}{y_i}\right|$
+\end{itemize}
+
+\section{Metodología}
+
+\subsection{Dataset}
+
+\subsubsection{Fuente de Datos}
+Se utilizó el dataset ``Huge Stock Market Dataset'' disponible en Kaggle (\url{https://www.kaggle.com/datasets/borismarjanovic/price-volume-data-for-all-us-stocks-etfs}), que contiene datos históricos de precios de acciones del mercado estadounidense.
+
+\subsubsection{Acción Seleccionada}
+Para este estudio se seleccionó AMD (Advanced Micro Devices Inc.) con archivo \texttt{amd.us.txt}.
+
+\subsubsection{Estructura de Datos}
+Cada registro contiene información diaria con las siguientes columnas:
+\begin{itemize}
+    \item \textbf{Date:} Fecha de cotización (formato YYYY-MM-DD)
+    \item \textbf{Open:} Precio de apertura del día
+    \item \textbf{High:} Precio máximo alcanzado en el día
+    \item \textbf{Low:} Precio mínimo alcanzado en el día
+    \item \textbf{Close:} Precio de cierre del día
+    \item \textbf{Volume:} Número de acciones negociadas
+    \item \textbf{OpenInt:} Open Interest (no utilizado en este análisis)
+\end{itemize}
+
+\subsubsection{Variable Objetivo}
+Se definió el \textbf{precio promedio} como:
+\begin{equation}
+\text{Precio Promedio} = \frac{\text{High} + \text{Low}}{2}
+\end{equation}
+
+Esta métrica proporciona una estimación robusta del precio central del día, menos susceptible a valores extremos que Open o Close.
+
+\subsection{Preprocesamiento}
+
+\subsubsection{División de Datos}
+Los datos se dividieron en tres conjuntos siguiendo el enfoque temporal estándar para series temporales:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lll}
+\toprule
+\textbf{Conjunto} & \textbf{Porcentaje} & \textbf{Uso} \\
+\midrule
+Entrenamiento & 70\% & Ajuste de pesos del modelo \\
+Validación & 15\% & Selección de hiperparámetros y early stopping \\
+Prueba & 15\% & Evaluación final del desempeño \\
+\bottomrule
+\end{tabular}
+\caption{División temporal de datos (preservando orden cronológico)}
+\end{table}
+
+\textbf{Justificación:} A diferencia de problemas de clasificación donde se puede usar división aleatoria, en series temporales es crítico preservar el orden cronológico para evitar data leakage y simular predicción realista hacia el futuro.
+
+\subsubsection{Normalización}
+Se aplicó normalización Min-Max a la escala [0, 1]:
+\begin{equation}
+x_{\text{norm}} = \frac{x - x_{\min}}{x_{\max} - x_{\min}}
+\end{equation}
+
+\textbf{Ventajas:}
+\begin{itemize}
+    \item Acelera convergencia del gradiente descendente
+    \item Previene saturación en funciones de activación (tanh, sigmoid)
+    \item Estabiliza magnitudes numéricas en backpropagation
+\end{itemize}
+
+\textbf{Importante:} La normalización se ajustó únicamente con datos de entrenamiento y se aplicó consistentemente a validación y prueba para evitar data leakage.
+
+\subsubsection{Creación de Secuencias}
+Para predicción de 1 paso adelante (next-day prediction), se construyeron ventanas deslizantes:
+
+\begin{itemize}
+    \item \textbf{Entrada X:} Secuencia de $n$ precios consecutivos: $[p_t, p_{t+1}, \ldots, p_{t+n-1}]$
+    \item \textbf{Salida y:} Precio siguiente: $p_{t+n}$
+\end{itemize}
+
+Se evaluaron tres longitudes de secuencia: $n \in \{60, 120, 180\}$ días.
+
+\subsection{Arquitecturas Implementadas}
+
+\subsubsection{Modelos Simples}
+
+\textbf{LSTM Simple:}
+\begin{itemize}
+    \item Capa LSTM con $n$ unidades
+    \item Capa Dense con 1 neurona (salida)
+    \item Activación lineal en salida (regresión)
+\end{itemize}
+
+\textbf{GRU Simple:}
+\begin{itemize}
+    \item Capa GRU con $n$ unidades
+    \item Capa Dense con 1 neurona (salida)
+    \item Activación lineal en salida (regresión)
+\end{itemize}
+
+\subsubsection{Modelos Apilados}
+
+\textbf{LSTM Apilado:}
+\begin{itemize}
+    \item Capa LSTM\_1 con $n_1$ unidades + return\_sequences=True
+    \item Capa LSTM\_2 con $n_2$ unidades (opcional: LSTM\_3 con $n_3$ unidades)
+    \item Capa Dense con 1 neurona (salida)
+\end{itemize}
+
+Configuraciones evaluadas:
+\begin{itemize}
+    \item 2 capas: [64, 32]
+    \item 3 capas: [64, 32, 16]
+\end{itemize}
+
+\textbf{GRU Apilado:} Estructura equivalente con capas GRU.
+
+\subsection{Configuraciones Experimentales}
+
+Se diseñó un protocolo experimental exhaustivo con 16 configuraciones diferentes agrupadas en tres categorías:
+
+\subsubsection{Experimentos LSTM (6 configuraciones)}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{llcccc}
+\toprule
+\textbf{Nombre} & \textbf{Descripción} & \textbf{seq\_length} & \textbf{batch\_size} & \textbf{units} & \textbf{dropout} \\
+\midrule
+lstm\_baseline & Configuración base & 60 & 16 & 64 & 0.0 \\
+lstm\_seq\_120 & Secuencia larga & 120 & 16 & 64 & 0.0 \\
+lstm\_seq\_180 & Secuencia muy larga & 180 & 16 & 64 & 0.0 \\
+lstm\_batch\_32 & Batch mediano & 60 & 32 & 64 & 0.0 \\
+lstm\_batch\_64 & Batch grande & 60 & 64 & 64 & 0.0 \\
+lstm\_dropout\_0\_2 & Con regularización & 60 & 16 & 64 & 0.2 \\
+\bottomrule
+\end{tabular}
+\caption{Configuraciones experimentales para LSTM}
+\end{table}
+
+\subsubsection{Experimentos GRU (6 configuraciones)}
+
+Configuraciones idénticas a LSTM para comparación directa bajo mismas condiciones:
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{llcccc}
+\toprule
+\textbf{Nombre} & \textbf{Descripción} & \textbf{seq\_length} & \textbf{batch\_size} & \textbf{units} & \textbf{dropout} \\
+\midrule
+gru\_baseline & Configuración base & 60 & 16 & 64 & 0.0 \\
+gru\_seq\_120 & Secuencia larga & 120 & 16 & 64 & 0.0 \\
+gru\_seq\_180 & Secuencia muy larga & 180 & 16 & 64 & 0.0 \\
+gru\_batch\_32 & Batch mediano & 60 & 32 & 64 & 0.0 \\
+gru\_batch\_64 & Batch grande & 60 & 64 & 64 & 0.0 \\
+gru\_dropout\_0\_2 & Con regularización & 60 & 16 & 64 & 0.2 \\
+\bottomrule
+\end{tabular}
+\caption{Configuraciones experimentales para GRU}
+\end{table}
+
+\subsubsection{Experimentos Apilados (4 configuraciones)}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{llcccc}
+\toprule
+\textbf{Nombre} & \textbf{Tipo} & \textbf{Capas} & \textbf{seq\_length} & \textbf{batch\_size} & \textbf{dropout} \\
+\midrule
+stacked\_lstm\_2\_layers & LSTM & [64, 32] & 60 & 16 & 0.2 \\
+stacked\_lstm\_3\_layers & LSTM & [64, 32, 16] & 60 & 16 & 0.2 \\
+stacked\_gru\_2\_layers & GRU & [64, 32] & 60 & 16 & 0.2 \\
+stacked\_gru\_3\_layers & GRU & [64, 32, 16] & 60 & 16 & 0.2 \\
+\bottomrule
+\end{tabular}
+\caption{Configuraciones experimentales para modelos apilados}
+\end{table}
+
+\subsection{Entrenamiento}
+
+\subsubsection{Hiperparámetros Fijos}
+\begin{itemize}
+    \item \textbf{Epochs:} 50 (todas las configuraciones)
+    \item \textbf{Optimizador:} Adam (learning rate por defecto: 0.001)
+    \item \textbf{Función de pérdida:} MSE (Mean Squared Error)
+    \item \textbf{Early stopping:} Patience=10 (detención si validación no mejora)
+    \item \textbf{Model checkpoint:} Guardar mejor modelo según val\_loss
+\end{itemize}
+
+\subsubsection{Callbacks Implementados}
+\begin{itemize}
+    \item \textbf{ModelCheckpoint:} Guardar modelo con mejor val\_loss
+    \item \textbf{EarlyStopping:} Prevenir overfitting excesivo
+    \item \textbf{ReduceLROnPlateau:} Reducir learning rate si se estanca
+\end{itemize}
+
+\section{Resultados}
+
+\subsection{Análisis Exploratorio de Datos}
+
+\subsubsection{Características de la Serie Temporal}
+
+Para la acción AMD (Advanced Micro Devices), el dataset contiene información histórica que muestra las características típicas de precios de acciones en el sector tecnológico:
+
+\begin{itemize}
+    \item \textbf{Tendencia:} Crecimiento significativo en el período analizado
+    \item \textbf{Volatilidad:} Fluctuaciones marcadas, especialmente en períodos de alta actividad
+    \item \textbf{Estacionalidad:} No se observa patrón estacional claro (característica común en acciones tech)
+\end{itemize}
+
+\subsection{Experimentos con LSTM}
+
+Se realizaron 6 experimentos con diferentes configuraciones de LSTM. Los resultados completos se muestran a continuación:
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Modelo} & \textbf{MSE} & \textbf{MAE} & \textbf{RMSE} & \textbf{R²} & \textbf{MAPE (\%)} \\
+\midrule
+lstm\_baseline & 0.0405 & 0.1101 & 0.2013 & 0.9972 & 2.07 \\
+lstm\_seq\_120 & 0.0432 & 0.1192 & 0.2079 & 0.9971 & 2.32 \\
+lstm\_seq\_180 & 0.0445 & 0.1169 & 0.2110 & 0.9971 & 2.10 \\
+lstm\_batch\_32 & 0.0431 & 0.1175 & 0.2077 & 0.9970 & 2.25 \\
+lstm\_batch\_64 & 0.0416 & 0.1123 & 0.2040 & 0.9971 & 2.11 \\
+lstm\_dropout\_0\_2 & 0.0513 & 0.1339 & 0.2265 & 0.9965 & 2.63 \\
+\bottomrule
+\end{tabular}
+\caption{Resultados cuantitativos de experimentos LSTM}
+\end{table}
+
+\subsubsection{Análisis de Resultados LSTM}
+
+\textbf{Mejor configuración: lstm\_baseline}
+\begin{itemize}
+    \item MSE: 0.0405 (el más bajo)
+    \item MAPE: 2.07\% (mejor error porcentual)
+    \item R²: 0.9972 (excelente ajuste)
+    \item Configuración: seq\_length=60, batch\_size=16, units=64, dropout=0.0
+\end{itemize}
+
+\textbf{Observaciones clave:}
+\begin{enumerate}
+    \item \textbf{Efecto de seq\_length:} Aumentar la longitud de secuencia (120, 180) degrada ligeramente el desempeño. MAPE aumenta de 2.07\% (seq=60) a 2.32\% (seq=120) y 2.10\% (seq=180). Esto sugiere que 60 días de historia es suficiente, y más contexto introduce ruido sin beneficio.
+    
+    \item \textbf{Efecto de batch\_size:} Batch más grande (32, 64) también degrada desempeño marginalmente. El baseline con batch=16 obtiene MAPE 2.07\%, mientras batch=32 alcanza 2.25\% y batch=64 alcanza 2.11\%. Batches pequeños proporcionan actualizaciones más frecuentes y mejor generalización en este caso.
+    
+    \item \textbf{Efecto de dropout:} Recurrent dropout de 0.2 penaliza significativamente: MAPE aumenta a 2.63\% (+27\% relativo al baseline). Esto indica que el modelo baseline no sufre overfitting severo, y la regularización adicional es contraproducente.
+\end{enumerate}
+
+\subsection{Experimentos con GRU}
+
+Los resultados de las 6 configuraciones GRU se presentan a continuación:
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Modelo} & \textbf{MSE} & \textbf{MAE} & \textbf{RMSE} & \textbf{R²} & \textbf{MAPE (\%)} \\
+\midrule
+gru\_baseline & 0.0405 & 0.1090 & 0.2012 & 0.9972 & 2.02 \\
+gru\_seq\_120 & 0.0432 & 0.1136 & 0.2078 & 0.9971 & 2.05 \\
+gru\_seq\_180 & 0.0440 & 0.1140 & 0.2097 & 0.9971 & 1.99 \\
+gru\_batch\_32 & 0.0410 & 0.1111 & 0.2025 & 0.9972 & 2.09 \\
+gru\_batch\_64 & 0.0419 & 0.1134 & 0.2048 & 0.9971 & 2.13 \\
+gru\_dropout\_0\_2 & 0.0422 & 0.1158 & 0.2054 & 0.9971 & 2.29 \\
+\bottomrule
+\end{tabular}
+\caption{Resultados cuantitativos de experimentos GRU}
+\end{table}
+
+\subsubsection{Análisis de Resultados GRU}
+
+\textbf{Mejor configuración: gru\_seq\_180}
+\begin{itemize}
+    \item MSE: 0.0440
+    \item MAPE: 1.99\% (el más bajo globalmente)
+    \item R²: 0.9971
+    \item Configuración: seq\_length=180, batch\_size=16, units=64, dropout=0.0
+\end{itemize}
+
+\textbf{Observaciones clave:}
+\begin{enumerate}
+    \item \textbf{GRU supera a LSTM:} El mejor GRU (MAPE 1.99\%) supera al mejor LSTM (MAPE 2.07\%) en un 3.9\% relativo. Esta ventaja es consistente en casi todas las configuraciones comparables.
+    
+    \item \textbf{GRU maneja mejor secuencias largas:} Mientras LSTM se degrada con seq=180 (MAPE 2.10\%), GRU mejora ligeramente (MAPE 1.99\%). Esto sugiere que la arquitectura simplificada de GRU es menos susceptible a vanishing gradients en secuencias largas para este problema específico.
+    
+    \item \textbf{Menor sensibilidad a dropout:} GRU con dropout=0.2 obtiene MAPE 2.29\%, solo 15\% peor que baseline. LSTM con dropout fue 27\% peor. GRU es más robusto a regularización excesiva.
+\end{enumerate}
+
+\subsection{Comparación LSTM vs GRU}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{Métrica} & \textbf{LSTM (promedio)} & \textbf{GRU (promedio)} \\
+\midrule
+MSE & 0.0440 & 0.0421 \\
+MAE & 0.1183 & 0.1128 \\
+RMSE & 0.2097 & 0.2052 \\
+R² & 0.9970 & 0.9971 \\
+MAPE (\%) & 2.25 & 2.09 \\
+\midrule
+\multicolumn{3}{l}{\textbf{Ganador: GRU (MAPE 7.1\% menor en promedio)}} \\
+\bottomrule
+\end{tabular}
+\caption{Comparación promedio entre LSTM y GRU (6 configuraciones cada uno)}
+\end{table}
+
+\subsubsection{Análisis Detallado por Configuración}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lccl}
+\toprule
+\textbf{Configuración} & \textbf{LSTM MAPE} & \textbf{GRU MAPE} & \textbf{Ganador} \\
+\midrule
+Baseline (seq=60) & 2.07\% & 2.02\% & GRU (-2.4\%) \\
+Seq=120 & 2.32\% & 2.05\% & GRU (-11.6\%) \\
+Seq=180 & 2.10\% & 1.99\% & GRU (-5.2\%) \\
+Batch=32 & 2.25\% & 2.09\% & GRU (-7.1\%) \\
+Batch=64 & 2.11\% & 2.13\% & LSTM (-0.9\%) \\
+Dropout=0.2 & 2.63\% & 2.29\% & GRU (-12.9\%) \\
+\midrule
+\multicolumn{4}{l}{\textit{GRU gana en 5 de 6 configuraciones}} \\
+\bottomrule
+\end{tabular}
+\caption{Comparación directa LSTM vs GRU por configuración}
+\end{table}
+
+\textbf{Conclusiones de la comparación:}
+\begin{enumerate}
+    \item GRU es superior en este problema específico, especialmente con secuencias largas
+    \item GRU es más eficiente computacionalmente (menos parámetros: 1 reset gate + 1 update gate vs 3 gates en LSTM)
+    \item GRU converge más rápido durante entrenamiento
+    \item Para series temporales financieras con dependencias moderadas, GRU es preferible
+\end{enumerate}
+
+\subsection{Experimentos con Modelos Apilados}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Modelo} & \textbf{MSE} & \textbf{MAE} & \textbf{RMSE} & \textbf{R²} & \textbf{MAPE (\%)} \\
+\midrule
+stacked\_lstm\_2\_layers & 0.0687 & 0.1748 & 0.2620 & 0.9953 & 4.11 \\
+stacked\_lstm\_3\_layers & 0.1058 & 0.2386 & 0.3252 & 0.9927 & 6.57 \\
+stacked\_gru\_2\_layers & 0.0437 & 0.1222 & 0.2091 & 0.9970 & 2.56 \\
+stacked\_gru\_3\_layers & 0.0470 & 0.1314 & 0.2167 & 0.9968 & 2.89 \\
+\bottomrule
+\end{tabular}
+\caption{Resultados de modelos apilados}
+\end{table}
+
+\subsubsection{Análisis de Modelos Apilados}
+
+\textbf{Hallazgos críticos:}
+
+\begin{enumerate}
+    \item \textbf{LSTM apilado falla dramáticamente:} El modelo de 2 capas obtiene MAPE 4.11\% (99\% peor que LSTM simple) y el de 3 capas colapsa a MAPE 6.57\% (217\% peor). Esto indica overfitting severo o problemas de optimización.
+    
+    \item \textbf{GRU apilado se mantiene competitivo:} Con 2 capas alcanza MAPE 2.56\% (27\% peor que GRU simple pero aún razonable). Con 3 capas degrada a 2.89\% (45\% peor).
+    
+    \item \textbf{Mayor profundidad no ayuda:} En todos los casos, agregar capas degrada desempeño. Esto sugiere que:
+    \begin{itemize}
+        \item El dataset no es lo suficientemente grande para soportar modelos profundos
+        \item La complejidad de las dependencias temporales en AMD no requiere jerarquías profundas
+        \item Los modelos apilados sufren de overfitting a pesar del dropout=0.2
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Comparación Global}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+\textbf{Categoría} & \textbf{Mejor Modelo} & \textbf{MAPE (\%)} & \textbf{R²} \\
+\midrule
+LSTM Simple & lstm\_baseline & 2.07 & 0.9972 \\
+GRU Simple & gru\_seq\_180 & 1.99 & 0.9971 \\
+LSTM Apilado & stacked\_lstm\_2\_layers & 4.11 & 0.9953 \\
+GRU Apilado & stacked\_gru\_2\_layers & 2.56 & 0.9970 \\
+\midrule
+\textbf{Ganador Global} & \textbf{gru\_seq\_180} & \textbf{1.99} & \textbf{0.9971} \\
+\bottomrule
+\end{tabular}
+\caption{Comparación de mejores modelos por categoría}
+\end{table}
+
+\subsection{Visualizaciones}
+
+Las visualizaciones generadas durante los experimentos confirman los hallazgos cuantitativos:
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{../output/images/lstm_comparison.png}
+\caption{Comparación de configuraciones LSTM: el baseline obtiene el mejor desempeño}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{../output/images/gru_comparison.png}
+\caption{Comparación de configuraciones GRU: gru\_seq\_180 lidera con MAPE 1.99\%}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{../output/images/global_comparison.png}
+\caption{Comparación global de los 16 experimentos}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{../output/images/seq_length_effect.png}
+\caption{Efecto de la longitud de secuencia: GRU mejora con secuencias largas, LSTM se degrada}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{../output/images/batch_size_effect.png}
+\caption{Efecto del tamaño de batch: batches pequeños (16) funcionan mejor}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{../output/images/simple_vs_stacked.png}
+\caption{Comparación modelos simples vs apilados: los simples superan consistentemente}
+\end{figure}
+
+\section{Discusión y Conclusiones}
+
+\subsection{Respuestas a las Preguntas del Taller}
+
+\subsubsection{Punto 1: Datos y Preprocesamiento}
+
+\textbf{a. Gráfica del valor promedio:} Se graficó la serie temporal completa de AMD mostrando el precio promedio calculado como (High + Low) / 2.
+
+\textbf{b. Normalización y ventanas:} Min-Max scaling [0,1]. Se evaluaron ventanas de \textbf{n = 60, 120 y 180 días}. Mejor: 180 días (GRU), 60 días (LSTM).
+
+\textbf{c. División de datos:} 70\% entrenamiento, 15\% validación, 15\% prueba (preservando orden cronológico).
+
+\subsubsection{Punto 2: Modelo LSTM}
+
+\textbf{a. Parámetros evaluados:} seq\_length (60, 120, 180), batch\_size (16, 32, 64), recurrent\_dropout (0.0, 0.2), units=64, epochs=50.
+
+\textbf{b. Gráficas:} Para cada configuración se generaron curvas de loss, predicciones vs reales, y residuales.
+
+\textbf{c. Configuración óptima LSTM:}
+\begin{itemize}
+    \item \textbf{Modelo:} lstm\_baseline (seq=60, batch=16, units=64, dropout=0.0)
+    \item \textbf{Métricas:} MAPE 2.07\%, R² 0.9972
+    \item \textbf{Análisis:} Secuencias de 60 días son óptimas para LSTM. Batch pequeño mejora generalización. Dropout penaliza el desempeño.
+\end{itemize}
+
+\subsubsection{Punto 3: Modelo GRU}
+
+\textbf{a. Parámetros:} Configuraciones idénticas a LSTM para comparación justa.
+
+\textbf{b. Gráficas:} Mismas visualizaciones que LSTM.
+
+\textbf{c. Configuración óptima GRU:}
+\begin{itemize}
+    \item \textbf{Modelo:} gru\_seq\_180 (seq=180, batch=16, units=64, dropout=0.0)
+    \item \textbf{Métricas:} MAPE 1.99\%, R² 0.9971
+    \item \textbf{Análisis:} GRU maneja mejor secuencias largas. Supera a LSTM en 5 de 6 configuraciones con ventaja promedio de 7.1\% en MAPE.
+\end{itemize}
+
+\textbf{Comparación LSTM vs GRU:} GRU es superior (MAPE promedio: 2.09\% vs 2.25\% en LSTM), más eficiente computacionalmente y robusto a hiperparámetros.
+
+\subsubsection{Punto 4: Red Apilada}
+
+\textbf{a. Configuración:} Se evaluaron modelos de 2 y 3 capas para LSTM y GRU con arquitecturas [64, 32] y [64, 32, 16].
+
+\textbf{b. Resultados:}
+\begin{itemize}
+    \item stacked\_lstm\_2\_layers: MAPE 4.11\% (99\% peor que simple)
+    \item stacked\_lstm\_3\_layers: MAPE 6.57\% (colapso total)
+    \item stacked\_gru\_2\_layers: MAPE 2.56\% (29\% peor que simple)
+    \item stacked\_gru\_3\_layers: MAPE 2.89\% (45\% peor)
+\end{itemize}
+
+\textbf{Análisis:} LSTM apilado falla dramáticamente por overfitting. GRU apilado se mantiene competitivo pero no supera modelos simples. Mayor profundidad no aporta beneficio en este problema.
+
+\subsection{Hallazgos Principales}
+
+\begin{enumerate}
+    \item \textbf{Mejor modelo global:} gru\_seq\_180 con MAPE 1.99\% y R² 0.9971
+    
+    \item \textbf{GRU superior a LSTM:} Gana en 5 de 6 configuraciones (ventaja 7.1\% promedio). Es más eficiente (menos parámetros) y robusto
+    
+    \item \textbf{Modelos simples superan apilados:} Agregar capas degrada desempeño. LSTM apilado colapsa (MAPE 4.11-6.57\%)
+    
+    \item \textbf{Hiperparámetros óptimos:} seq\_length=180 (GRU) o 60 (LSTM), batch\_size=16, dropout=0.0, units=64
+    
+    \item \textbf{Efectos observados:}
+    \begin{itemize}
+        \item GRU mejora con secuencias largas, LSTM se degrada
+        \item Batch pequeño (16) mejor que grande (32, 64)
+        \item Dropout contraproducente (modelos no overfittean)
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Limitaciones y Trabajo Futuro}
+
+\textbf{Limitaciones:} Evaluación en acción única (AMD), predicción 1-día, solo precio histórico, sin factores de mercado externos.
+
+\textbf{Mejoras propuestas:} Incluir features adicionales (volumen, RSI, MACD), evaluar múltiples acciones, predicción multi-paso, implementar attention mechanism, validación con walk-forward.
+
+\section{Referencias}
+
+\begin{thebibliography}{9}
+
+\bibitem{hochreiter1997}
+Hochreiter, S., \& Schmidhuber, J. (1997).
+Long short-term memory.
+\textit{Neural Computation}, 9(8), 1735--1780.
+
+\bibitem{cho2014}
+Cho, K., Van Merriënboer, B., Gulcehre, C., Bahdanau, D., Bougares, F., Schwenk, H., \& Bengio, Y. (2014).
+Learning phrase representations using RNN encoder-decoder for statistical machine translation.
+\textit{arXiv preprint arXiv:1406.1078}.
+
+\bibitem{kaggle_dataset}
+Marjanovic, B.
+Huge Stock Market Dataset.
+\textit{Kaggle}. \\
+\url{https://www.kaggle.com/datasets/borismarjanovic/price-volume-data-for-all-us-stocks-etfs}
+
+\bibitem{tensorflow}
+Abadi, M., et al. (2016).
+TensorFlow: A system for large-scale machine learning.
+\textit{12th USENIX Symposium on Operating Systems Design and Implementation (OSDI 16)}, 265--283.
+
+\bibitem{chollet2015}
+Chollet, F., et al. (2015).
+Keras.
+\url{https://keras.io}
+
+\end{thebibliography}
+
+\end{document}
